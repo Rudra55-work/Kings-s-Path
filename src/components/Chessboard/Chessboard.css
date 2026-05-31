@@ -1,0 +1,216 @@
+/* --- Chessboard Layout --- */
+.board-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 580px;
+  margin: 0 auto;
+  aspect-ratio: 1;
+  background-color: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  touch-action: none;
+}
+
+.chessboard {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  grid-template-rows: repeat(8, 1fr);
+  width: 100%;
+  height: 100%;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Square Base Styles */
+.square {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+/* Themes: Carbon (Default) */
+.square.light.theme-carbon {
+  background-color: var(--board-light-square);
+}
+.square.dark.theme-carbon {
+  background-color: var(--board-dark-square);
+}
+
+/* Themes: Slate */
+.square.light.theme-slate {
+  background-color: #f1f5f9;
+}
+.square.dark.theme-slate {
+  background-color: #64748b;
+}
+
+/* Themes: Classic Wood */
+.square.light.theme-classic {
+  background-color: #f0d9b5;
+}
+.square.dark.theme-classic {
+  background-color: #b58863;
+}
+
+/* Highlights */
+.square.selected {
+  background-color: var(--board-select) !important;
+}
+
+.square.last-move {
+  background-color: var(--board-last-move) !important;
+}
+
+.square.in-check {
+  animation: pulseCheck 1.2s infinite;
+  background-color: var(--board-king-check) !important;
+  z-index: 2;
+}
+
+/* Piece Placement & Draggability */
+.piece-container {
+  width: 95%;
+  height: 95%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  transition: transform var(--transition-fast);
+  cursor: grab;
+}
+
+.piece-container:active {
+  cursor: grabbing;
+  transform: scale(1.08);
+}
+
+.piece-svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
+  transition: filter var(--transition-fast);
+}
+
+/* Move Hints */
+.move-hint-dot {
+  width: 26%;
+  height: 26%;
+  background-color: var(--board-hint-dot);
+  border-radius: var(--radius-full);
+  z-index: 10;
+  pointer-events: none;
+}
+
+.move-hint-capture {
+  position: absolute;
+  width: 80%;
+  height: 80%;
+  border: 4px solid var(--board-hint-capture);
+  border-radius: var(--radius-full);
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* Coordinates Labels (Files & Ranks) */
+.coord {
+  position: absolute;
+  font-size: 0.65rem;
+  font-weight: 700;
+  pointer-events: none;
+  user-select: none;
+  opacity: 0.6;
+}
+
+.coord-file {
+  bottom: 2px;
+  right: 4px;
+}
+
+.coord-rank {
+  top: 4px;
+  left: 4px;
+}
+
+/* Light/Dark coordinate contrast adjustment */
+.square.light .coord {
+  color: var(--board-dark-square);
+}
+.square.dark .coord {
+  color: var(--board-light-square);
+}
+
+/* --- Promotion Overlay Selector --- */
+.promotion-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  animation: fadeIn var(--transition-fast) forwards;
+}
+
+.promotion-panel {
+  background-color: var(--bg-secondary);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  box-shadow: var(--shadow-lg);
+}
+
+.promotion-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.promotion-options {
+  display: flex;
+  gap: 12px;
+}
+
+.promotion-option {
+  width: 60px;
+  height: 60px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.promotion-option:hover {
+  background-color: var(--accent-bg);
+  border-color: var(--border-hover);
+  transform: translateY(-2px);
+}
+
+/* --- Mobile Adaptations --- */
+@media (max-width: 580px) {
+  .board-wrapper {
+    max-width: 100%;
+    border-radius: 0;
+    border-inline: none;
+  }
+  .move-hint-dot {
+    width: 24%;
+    height: 24%;
+  }
+}
