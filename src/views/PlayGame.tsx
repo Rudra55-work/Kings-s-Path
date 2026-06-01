@@ -62,7 +62,6 @@ export const PlayGame: React.FC<PlayGameProps> = ({ settings, onNavigate }) => {
 
   // Engine state
   const [isEngineCalculating, setIsEngineCalculating] = useState<boolean>(false);
-  const [engineProgress, setEngineProgress] = useState<number>(0);
   const [engineHint, setEngineHint] = useState<{ from: string; to: string } | null>(null);
 
   // Review state (user exploring moves)
@@ -197,12 +196,9 @@ export const PlayGame: React.FC<PlayGameProps> = ({ settings, onNavigate }) => {
 
   const triggerEngineMove = async () => {
     setIsEngineCalculating(true);
-    setEngineProgress(0);
 
     // Calculate move using our Minimax engine (search depth)
-    const { move } = await getBestMove(game.fen(), difficulty, (progress) => {
-      setEngineProgress(progress);
-    });
+    const { move } = await getBestMove(game.fen(), difficulty);
 
     if (move) {
       try {
@@ -652,20 +648,13 @@ export const PlayGame: React.FC<PlayGameProps> = ({ settings, onNavigate }) => {
         
         {/* Chessboard container column */}
         <div style={styles.boardColumn}>
-          {/* Engine calculation info banner */}
-          {isEngineCalculating && (
-            <div style={styles.evalBanner}>
-              🤖 AI Engine thinking... {engineProgress}%
-            </div>
-          )}
-          
           {isClockEnabled ? (
             <GameClock
               activeColor={isGameOver ? null : game.turn()}
               initialTime={clockTime}
               increment={clockInc}
               delay={clockDelay}
-              isPaused={isPaused || isGameOver || isEngineCalculating}
+              isPaused={isPaused || isGameOver}
               onTimeUp={handleTimeUp}
               moveTrigger={clockTrigger}
               soundEnabled={settings.soundEnabled}
