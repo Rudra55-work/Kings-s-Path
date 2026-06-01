@@ -9,7 +9,6 @@ import { SettingsView } from './views/Settings';
 import { storageService } from './db/storage';
 import type { AppSettings } from './db/storage';
 import { soundSynth } from './utils/soundSynth';
-import logoImg from './assets/logo.png';
 
 function App() {
   const [currentView, setCurrentView] = useState<string>('home');
@@ -154,11 +153,6 @@ function App() {
               </button>
             )}
             <a href="#" className="app-logo" onClick={() => navigateToView('home')}>
-              <img 
-                src={logoImg} 
-                alt="Logo" 
-                style={{ width: '28px', height: '28px', borderRadius: '6px', objectFit: 'cover' }} 
-              />
               King's Path
             </a>
           </div>

@@ -1,6 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { storageService } from '../db/storage';
-import logoImg from '../assets/logo.png';
+import React from 'react';
 
 interface HomeProps {
   onNavigate: (view: string) => void;
@@ -8,11 +6,6 @@ interface HomeProps {
 }
 
 export const Home: React.FC<HomeProps> = ({ onNavigate, dailyPuzzleTitle }) => {
-  const [userElo, setUserElo] = useState<number>(1200);
-
-  useEffect(() => {
-    setUserElo(storageService.getUserElo());
-  }, []);
   // Generate stylized falling chessboards with different sizes, themes, and drifts
   const fallingBoards = React.useMemo(() => {
     const themes = [
@@ -125,15 +118,7 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, dailyPuzzleTitle }) => {
       <div style={styles.contentWrapper}>
         {/* Hero Header */}
         <div style={styles.heroSection}>
-          <div style={styles.logoTitleRow}>
-            <img 
-              src={logoImg} 
-              alt="King's Path Logo" 
-              style={styles.heroLogo} 
-            />
-            <h1 style={{ ...styles.heroTitle, margin: 0 }}>King's Path</h1>
-          </div>
-          <div style={styles.eloBadge}>🏆 Rating: {userElo} ELO</div>
+          <h1 style={styles.heroTitle}>King's Path</h1>
           <p style={styles.heroSubtitle}>
             A premium, minimal, 100% offline-first chess platform for players of all levels. Zero network dependency, infinite tactical focus.
           </p>
@@ -229,35 +214,6 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     gap: '12px'
-  },
-  logoTitleRow: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '16px',
-    marginBottom: '4px',
-    flexWrap: 'wrap'
-  },
-  heroLogo: {
-    width: '68px',
-    height: '68px',
-    borderRadius: '16px',
-    boxShadow: 'var(--shadow-md)',
-    border: '1.5px solid var(--border-color)'
-  },
-  eloBadge: {
-    alignSelf: 'center',
-    backgroundColor: 'var(--accent-bg)',
-    border: '1.5px solid var(--accent-color)',
-    padding: '4px 14px',
-    borderRadius: '20px',
-    fontSize: '0.85rem',
-    fontWeight: 750,
-    color: 'var(--text-primary)',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '6px',
-    boxShadow: 'var(--shadow-sm)'
   },
   heroTitle: {
     fontSize: '2.8rem',

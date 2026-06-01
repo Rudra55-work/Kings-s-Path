@@ -165,15 +165,6 @@ class StorageService {
     return this.getBookmarkedPuzzles().includes(puzzleId);
   }
 
-  // --- ELO Rating Database ---
-  public getUserElo(): number {
-    const elo = this.get<number>('chess_user_elo');
-    return elo !== null ? elo : 1200;
-  }
-
-  public saveUserElo(elo: number) {
-    this.set('chess_user_elo', elo);
-  }
 
   // --- Diagnostics & Reset ---
   public clearAllData() {
@@ -182,7 +173,6 @@ class StorageService {
       localStorage.removeItem('chess_game_history');
       localStorage.removeItem('chess_bookmarked_puzzles');
       localStorage.removeItem('chess_settings');
-      localStorage.removeItem('chess_user_elo');
     }
     this.memoryDb = {};
     this.saveSettings(DEFAULT_SETTINGS);
