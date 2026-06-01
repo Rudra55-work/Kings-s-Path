@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { storageService } from '../db/storage';
+import logoImg from '../assets/logo.png';
 
 interface HomeProps {
   onNavigate: (view: string) => void;
@@ -126,7 +127,7 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, dailyPuzzleTitle }) => {
         <div style={styles.heroSection}>
           <div style={styles.logoTitleRow}>
             <img 
-              src="./assets/logo.png" 
+              src={logoImg} 
               alt="King's Path Logo" 
               style={styles.heroLogo} 
             />
