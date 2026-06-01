@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="A premium, minimal, offline-first chess application with 5 levels of AI engine play, interactive tactical training, game history, and opening explorers." />
+    
+    <!-- PWA integration -->
+    <link rel="manifest" href="./manifest.json" />
+    <link rel="icon" type="image/png" href="./icon-192.png" />
+    <meta name="theme-color" content="#121212" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="King's Path" />
+
+    <title>King's Path - Premium Offline Chess App</title>
+    <script type="module" crossorigin src="/Kings-s-Path/assets/index-B7BowFtj.js"></script>
+    <link rel="stylesheet" crossorigin href="/Kings-s-Path/assets/index-DRCEkcrZ.css">
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <!-- Inline Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js')
+            .then((reg) => {
+              console.log("King's Path Service Worker registered successfully!", reg.scope);
+            })
+            .catch((err) => {
+              console.warn('Service Worker registration failed:', err);
+            });
+        });
+      }
+    </script>
+  </body>
+</html>
