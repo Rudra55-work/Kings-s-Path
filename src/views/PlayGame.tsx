@@ -8,6 +8,7 @@ import { PGNModal } from '../components/PGNModal';
 import { getBestMove } from '../engine/minimax';
 import { soundSynth } from '../utils/soundSynth';
 import { storageService } from '../db/storage';
+import { calculateNewElo, AI_LEVEL_ELO } from '../utils/elo';
 
 interface PlayGameProps {
   settings: any;
@@ -29,6 +30,10 @@ export const PlayGame: React.FC<PlayGameProps> = ({ settings, onNavigate }) => {
   const [playerColor, setPlayerColor] = useState<'w' | 'b'>('w'); // in engine mode
   const [lobbyPlayerColor, setLobbyPlayerColor] = useState<'w' | 'b' | 'random'>('w');
   
+  // ELO Rating state
+  const [userElo, setUserElo] = useState<number>(1200);
+  const [eloChange, setEloChange] = useState<{ prev: number; next: number; diff: number } | null>(null);
+
   // Dynamic Mobile Layout Detection
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 640 : false);
 
@@ -72,6 +77,7 @@ export const PlayGame: React.FC<PlayGameProps> = ({ settings, onNavigate }) => {
 
   // Load active game or set up clean board on mount
   useEffect(() => {
+    setUserElo(storageService.getUserElo());
     const active = storageService.getActiveGame();
     if (active) {
       try {
@@ -250,6 +256,38 @@ export const PlayGame: React.FC<PlayGameProps> = ({ settings, onNavigate }) => {
       result: resultString,
       timeControl: isClockEnabled ? `${clockTime / 60}+${clockInc}` : 'None'
     });
+
+    // ELO rating updates for challenges against local AI
+    if (gameMode === 'engine') {
+      const currentElo = storageService.getUserElo();
+      const opponentElo = AI_LEVEL_ELO[difficulty] || 1200;
+
+      // Determine outcome: 1 = Win, 0 = Loss, 0.5 = Draw
+      let outcome = 0.5;
+      const isWinnerWhite = resultString.includes('White (Wins');
+      const isWinnerBlack = resultString.includes('Black (Wins');
+      
+      if (isWinnerWhite) {
+        outcome = playerColor === 'w' ? 1 : 0;
+      } else if (isWinnerBlack) {
+        outcome = playerColor === 'b' ? 1 : 0;
+      }
+
+      const nextElo = calculateNewElo(currentElo, opponentElo, outcome);
+      const diff = nextElo - currentElo;
+
+      setEloChange({
+        prev: currentElo,
+        next: nextElo,
+        diff: diff
+      });
+
+      storageService.saveUserElo(nextElo);
+      setUserElo(nextElo);
+    } else {
+      setEloChange(null);
+    }
+
     // Clear active game cache
     storageService.saveActiveGame(null);
   };
@@ -423,6 +461,7 @@ export const PlayGame: React.FC<PlayGameProps> = ({ settings, onNavigate }) => {
         <div className="card" style={{ ...styles.lobbyCard, padding: isMobile ? '18px' : '32px', gap: isMobile ? '16px' : '24px' }}>
           <div style={styles.lobbyHeader}>
             <h2 style={{ ...styles.lobbyTitle, fontSize: isMobile ? '1.5rem' : '2rem' }}>⚔️ Play Setup</h2>
+            <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--accent-color)', marginTop: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>🏆 Your Rating: {userElo} ELO</div>
             <p style={styles.lobbySubtitle}>Configure your offline chess match options below</p>
           </div>
 
@@ -537,6 +576,7 @@ export const PlayGame: React.FC<PlayGameProps> = ({ settings, onNavigate }) => {
                       >
                         <div style={{ fontWeight: 700 }}>Lvl {lvl}</div>
                         <div style={{ fontSize: '0.6rem', opacity: 0.8 }}>{diffNames[lvl - 1]}</div>
+                        <div style={{ fontSize: '0.58rem', fontWeight: 600, opacity: 0.9, marginTop: '2px' }}>⭐ {AI_LEVEL_ELO[lvl]} ELO</div>
                       </button>
                     );
                   })}
@@ -619,18 +659,46 @@ export const PlayGame: React.FC<PlayGameProps> = ({ settings, onNavigate }) => {
             </div>
           )}
           
-          <Chessboard
-            fen={fen}
-            onMove={handleMakeMove}
-            interactive={isLive && !isGameOver && !isEngineCalculating}
-            isFlipped={boardFlipped}
-            boardTheme={settings.boardTheme}
-            pieceStyle={settings.pieceStyle}
-            moveHintsEnabled={settings.moveHintsEnabled}
-            soundEnabled={settings.soundEnabled}
-            hapticsEnabled={settings.hapticsEnabled}
-            lastMove={engineHint || lastMove}
-          />
+          {isClockEnabled ? (
+            <GameClock
+              activeColor={isGameOver ? null : game.turn()}
+              initialTime={clockTime}
+              increment={clockInc}
+              delay={clockDelay}
+              isPaused={isPaused || isGameOver || isEngineCalculating}
+              onTimeUp={handleTimeUp}
+              moveTrigger={clockTrigger}
+              soundEnabled={settings.soundEnabled}
+              isFlipped={boardFlipped}
+              autoRotate={gameMode === 'local' && autoRotate}
+            >
+              <Chessboard
+                fen={fen}
+                onMove={handleMakeMove}
+                interactive={isLive && !isGameOver && !isEngineCalculating}
+                isFlipped={boardFlipped}
+                boardTheme={settings.boardTheme}
+                pieceStyle={settings.pieceStyle}
+                moveHintsEnabled={settings.moveHintsEnabled}
+                soundEnabled={settings.soundEnabled}
+                hapticsEnabled={settings.hapticsEnabled}
+                lastMove={engineHint || lastMove}
+              />
+            </GameClock>
+          ) : (
+            <Chessboard
+              fen={fen}
+              onMove={handleMakeMove}
+              interactive={isLive && !isGameOver && !isEngineCalculating}
+              isFlipped={boardFlipped}
+              boardTheme={settings.boardTheme}
+              pieceStyle={settings.pieceStyle}
+              moveHintsEnabled={settings.moveHintsEnabled}
+              soundEnabled={settings.soundEnabled}
+              hapticsEnabled={settings.hapticsEnabled}
+              lastMove={engineHint || lastMove}
+            />
+          )}
 
           {/* Core controls */}
           <div style={styles.controlsRow}>
@@ -687,21 +755,8 @@ export const PlayGame: React.FC<PlayGameProps> = ({ settings, onNavigate }) => {
           </div>
         </div>
 
-        {/* Sidebar panels Column (Clocks, Moves, Captured) */}
+        {/* Sidebar panels Column (Moves, Captured, Clock Controls) */}
         <div style={styles.sidebarColumn}>
-          {isClockEnabled && (
-            <GameClock
-              activeColor={isGameOver ? null : game.turn()}
-              initialTime={clockTime}
-              increment={clockInc}
-              delay={clockDelay}
-              isPaused={isPaused || isGameOver || isEngineCalculating}
-              onTimeUp={handleTimeUp}
-              moveTrigger={clockTrigger}
-              soundEnabled={settings.soundEnabled}
-            />
-          )}
-
           {/* Clock controls if clock active */}
           {isClockEnabled && !isGameOver && (
             <button
@@ -733,6 +788,26 @@ export const PlayGame: React.FC<PlayGameProps> = ({ settings, onNavigate }) => {
             <div style={{ fontSize: '1.1rem', fontWeight: 600, textAlign: 'center', margin: '12px 0' }}>
               {gameStatusText}
             </div>
+
+            {eloChange && (
+              <div style={{
+                backgroundColor: 'var(--accent-bg)',
+                border: '1.5px solid var(--accent-color)',
+                padding: '10px 14px',
+                borderRadius: '8px',
+                textAlign: 'center',
+                margin: '8px 0 12px 0'
+              }}>
+                <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>🏆 Rating Update</div>
+                <div style={{ fontSize: '1.25rem', fontWeight: 850, color: 'var(--text-primary)', marginTop: '4px', fontVariantNumeric: 'tabular-nums' }}>
+                  {eloChange.prev} → {eloChange.next}{' '}
+                  <span style={{ color: eloChange.diff >= 0 ? 'var(--success-color)' : 'var(--danger-color)', fontWeight: 800 }}>
+                    ({eloChange.diff >= 0 ? `+${eloChange.diff}` : eloChange.diff} ELO)
+                  </span>
+                </div>
+              </div>
+            )}
+
             <p style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
               Match saved to local game logs in history.
             </p>

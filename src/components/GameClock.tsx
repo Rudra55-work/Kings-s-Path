@@ -13,6 +13,9 @@ interface GameClockProps {
   // External triggers to notify move completion
   moveTrigger: number; // counter incremented on each move to apply increment/delay
   soundEnabled?: boolean;
+  isFlipped?: boolean; // NEW: board flipped view
+  autoRotate?: boolean; // NEW: rotate top clock 180deg for face-to-face local play
+  children?: React.ReactNode; // NEW: chessboard sandwiched inside
 }
 
 export const GameClock: React.FC<GameClockProps> = ({
@@ -24,7 +27,10 @@ export const GameClock: React.FC<GameClockProps> = ({
   onTimeUp,
   onTimeChange,
   moveTrigger,
-  soundEnabled = true
+  soundEnabled = true,
+  isFlipped = false,
+  autoRotate = false,
+  children
 }) => {
   const [whiteTime, setWhiteTime] = useState<number>(initialTime);
   const [blackTime, setBlackTime] = useState<number>(initialTime);
@@ -172,79 +178,98 @@ export const GameClock: React.FC<GameClockProps> = ({
   const isWhiteCritical = whiteTime <= 10;
   const isBlackCritical = blackTime <= 10;
 
+  // Render individual player clock panel
+  const renderPlayerClock = (color: 'w' | 'b', isTop: boolean) => {
+    const time = color === 'w' ? whiteTime : blackTime;
+    const delayLeft = color === 'w' ? whiteDelayLeft : blackDelayLeft;
+    const isCritical = color === 'w' ? isWhiteCritical : isBlackCritical;
+    const isActive = activeColor === color;
+    const label = color === 'w' ? 'White' : 'Black';
+    const icon = color === 'w' ? '⚪' : '⚫';
+
+    // Top clock can be flipped 180 degrees for local pass-and-play matches
+    const rotationStyle = (isTop && autoRotate) ? { transform: 'rotate(180deg)' } : {};
+
+    return (
+      <div 
+        className={`clock-panel ${color}-clock ${isActive ? 'active' : ''} ${isCritical ? 'critical' : ''}`}
+        style={{
+          ...styles.panel,
+          ...(isActive ? styles.activePanel : styles.inactive),
+          ...(isCritical && isActive ? styles.critical : {}),
+          ...rotationStyle
+        }}
+      >
+        <div style={styles.playerLabel}>
+          <span style={{ marginRight: '6px' }}>{icon}</span>
+          <span>{label}</span>
+          {isActive && !isPaused && <span className="active-ticker" style={styles.activeTicker}>●</span>}
+        </div>
+        <div style={styles.timeValue}>{formatTime(time)}</div>
+        {delayLeft > 0 && isActive && (
+          <div style={styles.delayLabel}>Delay: {delayLeft.toFixed(1)}s</div>
+        )}
+      </div>
+    );
+  };
+
+  const topColor: 'w' | 'b' = isFlipped ? 'w' : 'b';
+  const bottomColor: 'w' | 'b' = isFlipped ? 'b' : 'w';
+
   return (
     <div className="game-clock-container" style={styles.container}>
-      {/* Black Player Timer Panel */}
-      <div 
-        className={`clock-panel black-clock ${activeColor === 'b' ? 'active' : ''} ${isBlackCritical ? 'critical' : ''}`}
-        style={{
-          ...styles.panel,
-          ...(activeColor === 'b' ? styles.activeBlack : styles.inactive),
-          ...(isBlackCritical && activeColor === 'b' ? styles.critical : {})
-        }}
-      >
-        <div style={styles.playerLabel}>Black</div>
-        <div style={styles.timeValue}>{formatTime(blackTime)}</div>
-        {blackDelayLeft > 0 && activeColor === 'b' && (
-          <div style={styles.delayLabel}>Delay: {blackDelayLeft.toFixed(1)}s</div>
-        )}
+      {/* Top Opponent Clock */}
+      {renderPlayerClock(topColor, true)}
+      
+      {/* Sandwich children (Chessboard) */}
+      <div style={styles.boardWrapper}>
+        {children}
       </div>
-
-      {/* White Player Timer Panel */}
-      <div 
-        className={`clock-panel white-clock ${activeColor === 'w' ? 'active' : ''} ${isWhiteCritical ? 'critical' : ''}`}
-        style={{
-          ...styles.panel,
-          ...(activeColor === 'w' ? styles.activeWhite : styles.inactive),
-          ...(isWhiteCritical && activeColor === 'w' ? styles.critical : {})
-        }}
-      >
-        <div style={styles.playerLabel}>White</div>
-        <div style={styles.timeValue}>{formatTime(whiteTime)}</div>
-        {whiteDelayLeft > 0 && activeColor === 'w' && (
-          <div style={styles.delayLabel}>Delay: {whiteDelayLeft.toFixed(1)}s</div>
-        )}
-      </div>
+      
+      {/* Bottom Player Clock */}
+      {renderPlayerClock(bottomColor, false)}
     </div>
   );
 };
 
-// Inline premium styles for clock elements
+// Inline premium styles for board-sandwiched clocks
 const styles: Record<string, React.CSSProperties> = {
   container: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '12px',
-    width: '100%'
+    gap: '8px',
+    width: '100%',
+    maxWidth: '100%'
+  },
+  boardWrapper: {
+    width: '100%',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center'
   },
   panel: {
-    padding: '16px 20px',
-    borderRadius: '12px',
+    padding: '8px 16px',
+    borderRadius: '8px',
     border: '1px solid var(--border-color)',
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+    transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
     position: 'relative',
-    overflow: 'hidden'
+    overflow: 'hidden',
+    height: '42px',
+    boxSizing: 'border-box'
   },
   inactive: {
     backgroundColor: 'var(--bg-secondary)',
-    opacity: 0.7
+    opacity: 0.8
   },
-  activeWhite: {
-    backgroundColor: 'var(--accent-color)',
-    color: 'var(--bg-primary)',
+  activePanel: {
+    backgroundColor: 'var(--accent-bg)',
+    color: 'var(--text-primary)',
     borderColor: 'var(--accent-color)',
-    transform: 'scale(1.02)',
-    boxShadow: 'var(--shadow-md)'
-  },
-  activeBlack: {
-    backgroundColor: 'var(--accent-color)',
-    color: 'var(--bg-primary)',
-    borderColor: 'var(--accent-color)',
-    transform: 'scale(1.02)',
-    boxShadow: 'var(--shadow-md)'
+    borderWidth: '1.5px',
+    boxShadow: '0 0 10px rgba(0, 0, 0, 0.05)'
   },
   critical: {
     backgroundColor: 'var(--danger-color)',
@@ -254,20 +279,29 @@ const styles: Record<string, React.CSSProperties> = {
   },
   playerLabel: {
     fontSize: '0.85rem',
-    fontWeight: 600,
+    fontWeight: 700,
     textTransform: 'uppercase',
-    letterSpacing: '0.05em'
+    letterSpacing: '0.04em',
+    display: 'flex',
+    alignItems: 'center'
   },
   timeValue: {
-    fontSize: '1.8rem',
+    fontSize: '1.4rem',
     fontWeight: 800,
-    fontVariantNumeric: 'tabular-nums'
+    fontVariantNumeric: 'tabular-nums',
+    letterSpacing: '-0.02em'
   },
   delayLabel: {
     position: 'absolute',
-    bottom: '4px',
-    right: '20px',
+    bottom: '2px',
+    right: '16px',
+    fontSize: '0.58rem',
+    opacity: 0.85
+  },
+  activeTicker: {
+    marginLeft: '6px',
+    color: 'var(--accent-color)',
     fontSize: '0.65rem',
-    opacity: 0.8
+    animation: 'pulseCheck 1.2s infinite'
   }
 };

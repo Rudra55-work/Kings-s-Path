@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { storageService } from '../db/storage';
 
 interface HomeProps {
   onNavigate: (view: string) => void;
@@ -6,6 +7,11 @@ interface HomeProps {
 }
 
 export const Home: React.FC<HomeProps> = ({ onNavigate, dailyPuzzleTitle }) => {
+  const [userElo, setUserElo] = useState<number>(1200);
+
+  useEffect(() => {
+    setUserElo(storageService.getUserElo());
+  }, []);
   // Generate stylized falling chessboards with different sizes, themes, and drifts
   const fallingBoards = React.useMemo(() => {
     const themes = [
@@ -119,6 +125,7 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, dailyPuzzleTitle }) => {
         {/* Hero Header */}
         <div style={styles.heroSection}>
           <h1 style={styles.heroTitle}>King's Path</h1>
+          <div style={styles.eloBadge}>🏆 Rating: {userElo} ELO</div>
           <p style={styles.heroSubtitle}>
             A premium, minimal, 100% offline-first chess platform for players of all levels. Zero network dependency, infinite tactical focus.
           </p>
@@ -214,6 +221,20 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     gap: '12px'
+  },
+  eloBadge: {
+    alignSelf: 'center',
+    backgroundColor: 'var(--accent-bg)',
+    border: '1.5px solid var(--accent-color)',
+    padding: '4px 14px',
+    borderRadius: '20px',
+    fontSize: '0.85rem',
+    fontWeight: 750,
+    color: 'var(--text-primary)',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+    boxShadow: 'var(--shadow-sm)'
   },
   heroTitle: {
     fontSize: '2.8rem',
