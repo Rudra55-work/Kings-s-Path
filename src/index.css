@@ -303,20 +303,10 @@ button {
   display: inline-block;
   width: 28px;
   height: 28px;
-  border: 2px solid var(--text-primary);
+  background-image: url('./assets/logo.png');
+  background-size: cover;
+  background-position: center;
   border-radius: 6px;
-  position: relative;
-}
-
-.logo-icon::before {
-  content: '';
-  position: absolute;
-  top: 4px;
-  left: 4px;
-  width: 16px;
-  height: 16px;
-  background-color: var(--text-primary);
-  border-radius: 3px;
 }
 
 /* Premium Back Button in Header */

@@ -820,9 +820,32 @@ export const PlayGame: React.FC<PlayGameProps> = ({ settings, onNavigate }) => {
             <p style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
               Match saved to local game logs in history.
             </p>
-            <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
-              <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleRestart}>Play Again</button>
-              <button className="btn btn-secondary" style={{ flex: 1 }} onClick={handleExitToLobby}>Setup Screen</button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '16px', width: '100%' }}>
+              <button 
+                className="btn btn-primary" 
+                style={{ width: '100%', padding: '12px' }} 
+                onClick={handleRestart}
+              >
+                ⚔️ Next Match
+              </button>
+              <div style={{ display: 'flex', gap: '10px', width: '100%' }}>
+                <button 
+                  className="btn btn-secondary" 
+                  style={{ flex: 1, padding: '10px' }} 
+                  onClick={() => setIsGameOver(false)}
+                  title="Review played moves"
+                >
+                  🔍 Review Match
+                </button>
+                <button 
+                  className="btn btn-secondary" 
+                  style={{ flex: 1, padding: '10px' }} 
+                  onClick={() => onNavigate('home')}
+                  title="Return to Dashboard"
+                >
+                  🏠 Dashboard
+                </button>
+              </div>
             </div>
           </div>
         </div>
