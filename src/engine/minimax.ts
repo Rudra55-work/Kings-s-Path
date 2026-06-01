@@ -1,6 +1,10 @@
 import { Chess } from 'chess.js';
 import { evaluateBoard, PIECE_VALUES } from './evaluation';
 
+// Globals to enforce search time limit to completely eliminate UI lag
+let searchStartTime = 0;
+const SEARCH_TIME_LIMIT = 500; // Strict 500ms time limit budget for search calculations
+
 /**
  * Minimax algorithm with Alpha-Beta pruning to evaluate the best position score.
  * Reuses the same game instance during depth-first search for high performance.
@@ -12,6 +16,11 @@ function minimax(
   beta: number,
   isMaximizing: boolean
 ): number {
+  // Check strict time limit to abort search and prevent UI stuttering
+  if (Date.now() - searchStartTime > SEARCH_TIME_LIMIT) {
+    return evaluateBoard(game.board());
+  }
+
   // Base case: depth limit reached or game over
   if (depth === 0 || game.isGameOver()) {
     if (game.isCheckmate()) {
@@ -93,6 +102,7 @@ export async function getBestMove(
   depth: number,
   onProgress?: (progress: number) => void
 ): Promise<{ move: any; score: number }> {
+  searchStartTime = Date.now(); // Reset strict search timer before starting
   const game = new Chess(fen);
   const moves = game.moves({ verbose: true });
 
@@ -121,6 +131,11 @@ export async function getBestMove(
   let lastYieldTime = Date.now();
 
   for (const move of moves) {
+    // Stop root evaluations if we already breached the time budget limit
+    if (Date.now() - searchStartTime > SEARCH_TIME_LIMIT) {
+      break;
+    }
+
     game.move(move);
     // Perform minimax on the move
     const score = minimax(game, depth - 1, -Infinity, Infinity, !isWhiteTurn);

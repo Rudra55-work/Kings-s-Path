@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { soundSynth } from '../utils/soundSynth';
+import { SVGPiece } from './Chessboard/SVGPieces';
 
 interface GameClockProps {
   activeColor: 'w' | 'b' | null;
@@ -13,9 +14,10 @@ interface GameClockProps {
   // External triggers to notify move completion
   moveTrigger: number; // counter incremented on each move to apply increment/delay
   soundEnabled?: boolean;
-  isFlipped?: boolean; // NEW: board flipped view
-  autoRotate?: boolean; // NEW: rotate top clock 180deg for face-to-face local play
-  children?: React.ReactNode; // NEW: chessboard sandwiched inside
+  isFlipped?: boolean; // board flipped view
+  autoRotate?: boolean; // rotate top clock 180deg for face-to-face local play
+  children?: React.ReactNode; // chessboard sandwiched inside
+  verboseHistory?: any[]; // NEW: to calculate and render captured pieces on their side
 }
 
 export const GameClock: React.FC<GameClockProps> = ({
@@ -30,7 +32,8 @@ export const GameClock: React.FC<GameClockProps> = ({
   soundEnabled = true,
   isFlipped = false,
   autoRotate = false,
-  children
+  children,
+  verboseHistory = []
 }) => {
   const [whiteTime, setWhiteTime] = useState<number>(initialTime);
   const [blackTime, setBlackTime] = useState<number>(initialTime);
@@ -62,7 +65,6 @@ export const GameClock: React.FC<GameClockProps> = ({
     if (moveTrigger === 0) return;
     
     // Apply increment to the player WHO JUST MOVED
-    // Note: Since activeColor just flipped to the *next* player, the player who just moved is the *opposite* of activeColor
     if (activeColor === 'b') {
       // White just moved
       setWhiteTime((prev) => prev + increment);
@@ -178,6 +180,42 @@ export const GameClock: React.FC<GameClockProps> = ({
   const isWhiteCritical = whiteTime <= 10;
   const isBlackCritical = blackTime <= 10;
 
+  // --- Captured Pieces Calculations ---
+  const MATERIAL_VALUES: Record<string, number> = {
+    p: 1, n: 3, b: 3, r: 5, q: 9
+  };
+
+  const capturedByWhite: string[] = []; // Black pieces captured by White
+  const capturedByBlack: string[] = []; // White pieces captured by Black
+  let whiteScore = 0;
+  let blackScore = 0;
+
+  if (verboseHistory && verboseHistory.length > 0) {
+    verboseHistory.forEach((move) => {
+      if (move.captured) {
+        const piece = move.captured;
+        const val = MATERIAL_VALUES[piece] || 0;
+        if (move.color === 'w') {
+          capturedByWhite.push(piece);
+          whiteScore += val;
+        } else {
+          capturedByBlack.push(piece);
+          blackScore += val;
+        }
+      }
+    });
+  }
+
+  // Sort order: Queen, Rook, Bishop, Knight, Pawn
+  const sortOrder = ['q', 'r', 'b', 'n', 'p'];
+  const sortFunc = (a: string, b: string) => sortOrder.indexOf(a) - sortOrder.indexOf(b);
+  capturedByWhite.sort(sortFunc);
+  capturedByBlack.sort(sortFunc);
+
+  const diff = whiteScore - blackScore;
+  const whiteAdvantage = diff > 0 ? `+${diff}` : '';
+  const blackAdvantage = diff < 0 ? `+${Math.abs(diff)}` : '';
+
   // Render individual player clock panel
   const renderPlayerClock = (color: 'w' | 'b', isTop: boolean) => {
     const time = color === 'w' ? whiteTime : blackTime;
@@ -186,6 +224,11 @@ export const GameClock: React.FC<GameClockProps> = ({
     const isActive = activeColor === color;
     const label = color === 'w' ? 'White' : 'Black';
     const icon = color === 'w' ? '⚪' : '⚫';
+
+    // captured list for this player (White player captured Black pieces, Black player captured White pieces)
+    const capturedPiecesList = color === 'w' ? capturedByWhite : capturedByBlack;
+    const opponentColor = color === 'w' ? 'b' : 'w';
+    const advantage = color === 'w' ? whiteAdvantage : blackAdvantage;
 
     // Top clock can be flipped 180 degrees for local pass-and-play matches
     const rotationStyle = (isTop && autoRotate) ? { transform: 'rotate(180deg)' } : {};
@@ -200,11 +243,24 @@ export const GameClock: React.FC<GameClockProps> = ({
           ...rotationStyle
         }}
       >
-        <div style={styles.playerLabel}>
-          <span style={{ marginRight: '6px' }}>{icon}</span>
-          <span>{label}</span>
-          {isActive && !isPaused && <span className="active-ticker" style={styles.activeTicker}>●</span>}
+        <div style={styles.playerLabelContainer}>
+          <div style={styles.playerLabel}>
+            <span style={{ marginRight: '4px' }}>{icon}</span>
+            <span>{label}</span>
+            {isActive && !isPaused && <span className="active-ticker" style={styles.activeTicker}>●</span>}
+          </div>
+          
+          {/* Inline Captured Pieces */}
+          <div style={styles.capturedInlineList}>
+            {capturedPiecesList.map((type, idx) => (
+              <div key={idx} style={styles.capturedPieceIcon}>
+                <SVGPiece type={type} color={opponentColor} size={13} />
+              </div>
+            ))}
+            {advantage && <span style={styles.inlineAdvantage}>{advantage}</span>}
+          </div>
         </div>
+        
         <div style={styles.timeValue}>{formatTime(time)}</div>
         {delayLeft > 0 && isActive && (
           <div style={styles.delayLabel}>Delay: {delayLeft.toFixed(1)}s</div>
@@ -218,7 +274,7 @@ export const GameClock: React.FC<GameClockProps> = ({
 
   return (
     <div className="game-clock-container" style={styles.container}>
-      {/* Top Opponent Clock */}
+      {/* Top Opponent Clock + Captured pieces */}
       {renderPlayerClock(topColor, true)}
       
       {/* Sandwich children (Chessboard) */}
@@ -226,18 +282,18 @@ export const GameClock: React.FC<GameClockProps> = ({
         {children}
       </div>
       
-      {/* Bottom Player Clock */}
+      {/* Bottom Player Clock + Captured pieces */}
       {renderPlayerClock(bottomColor, false)}
     </div>
   );
 };
 
-// Inline premium styles for board-sandwiched clocks
+// Inline compact styles for board-sandwiched clocks
 const styles: Record<string, React.CSSProperties> = {
   container: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '8px',
+    gap: '6px',
     width: '100%',
     maxWidth: '100%'
   },
@@ -248,8 +304,8 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center'
   },
   panel: {
-    padding: '8px 16px',
-    borderRadius: '8px',
+    padding: '4px 12px',
+    borderRadius: '6px',
     border: '1px solid var(--border-color)',
     display: 'flex',
     justifyContent: 'space-between',
@@ -257,19 +313,19 @@ const styles: Record<string, React.CSSProperties> = {
     transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
     position: 'relative',
     overflow: 'hidden',
-    height: '42px',
+    height: '32px', // Compact height as requested
     boxSizing: 'border-box'
   },
   inactive: {
     backgroundColor: 'var(--bg-secondary)',
-    opacity: 0.8
+    opacity: 0.82
   },
   activePanel: {
     backgroundColor: 'var(--accent-bg)',
     color: 'var(--text-primary)',
     borderColor: 'var(--accent-color)',
     borderWidth: '1.5px',
-    boxShadow: '0 0 10px rgba(0, 0, 0, 0.05)'
+    boxShadow: '0 0 8px rgba(0, 0, 0, 0.04)'
   },
   critical: {
     backgroundColor: 'var(--danger-color)',
@@ -277,31 +333,61 @@ const styles: Record<string, React.CSSProperties> = {
     borderColor: 'var(--danger-color)',
     animation: 'pulseCheck 1s infinite'
   },
+  playerLabelContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px'
+  },
   playerLabel: {
-    fontSize: '0.85rem',
-    fontWeight: 700,
+    fontSize: '0.78rem',
+    fontWeight: 750,
     textTransform: 'uppercase',
     letterSpacing: '0.04em',
     display: 'flex',
     alignItems: 'center'
   },
+  capturedInlineList: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '1.5px',
+    marginLeft: '2px'
+  },
+  capturedPieceIcon: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '13px',
+    height: '13px',
+    opacity: 0.9
+  },
+  inlineAdvantage: {
+    fontSize: '0.64rem',
+    fontWeight: 850,
+    color: 'var(--text-primary)',
+    marginLeft: '3px',
+    opacity: 0.95,
+    backgroundColor: 'var(--border-color)',
+    padding: '0 4px',
+    borderRadius: '3px',
+    lineHeight: 1.3
+  },
   timeValue: {
-    fontSize: '1.4rem',
+    fontSize: '1.15rem', // Compact and highly readable time size
     fontWeight: 800,
     fontVariantNumeric: 'tabular-nums',
     letterSpacing: '-0.02em'
   },
   delayLabel: {
     position: 'absolute',
-    bottom: '2px',
-    right: '16px',
-    fontSize: '0.58rem',
-    opacity: 0.85
+    bottom: '1px',
+    right: '12px',
+    fontSize: '0.52rem',
+    opacity: 0.8
   },
   activeTicker: {
-    marginLeft: '6px',
+    marginLeft: '4px',
     color: 'var(--accent-color)',
-    fontSize: '0.65rem',
+    fontSize: '0.55rem',
     animation: 'pulseCheck 1.2s infinite'
   }
 };

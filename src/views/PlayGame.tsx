@@ -3,7 +3,6 @@ import { Chess } from 'chess.js';
 import { Chessboard } from '../components/Chessboard/Chessboard';
 import { GameClock } from '../components/GameClock';
 import { MoveList } from '../components/MoveList';
-import { CapturedPieces } from '../components/CapturedPieces';
 import { PGNModal } from '../components/PGNModal';
 import { getBestMove } from '../engine/minimax';
 import { soundSynth } from '../utils/soundSynth';
@@ -197,8 +196,18 @@ export const PlayGame: React.FC<PlayGameProps> = ({ settings, onNavigate }) => {
   const triggerEngineMove = async () => {
     setIsEngineCalculating(true);
 
+    // AI level search depth mapping to optimize performance and prevent lag
+    const levelDepths: Record<number, number> = {
+      1: 1,
+      2: 2,
+      3: 3,
+      4: 3,
+      5: 4
+    };
+    const targetDepth = levelDepths[difficulty] || 3;
+
     // Calculate move using our Minimax engine (search depth)
-    const { move } = await getBestMove(game.fen(), difficulty);
+    const { move } = await getBestMove(game.fen(), targetDepth);
 
     if (move) {
       try {
@@ -660,6 +669,7 @@ export const PlayGame: React.FC<PlayGameProps> = ({ settings, onNavigate }) => {
               soundEnabled={settings.soundEnabled}
               isFlipped={boardFlipped}
               autoRotate={gameMode === 'local' && autoRotate}
+              verboseHistory={verboseHistory}
             >
               <Chessboard
                 fen={fen}
@@ -757,8 +767,6 @@ export const PlayGame: React.FC<PlayGameProps> = ({ settings, onNavigate }) => {
             </button>
           )}
 
-          <CapturedPieces history={verboseHistory} />
-          
           <div style={{ flex: 1, minHeight: '220px' }}>
             <MoveList
               history={history}
