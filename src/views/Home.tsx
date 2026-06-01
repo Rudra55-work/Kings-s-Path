@@ -124,7 +124,14 @@ export const Home: React.FC<HomeProps> = ({ onNavigate, dailyPuzzleTitle }) => {
       <div style={styles.contentWrapper}>
         {/* Hero Header */}
         <div style={styles.heroSection}>
-          <h1 style={styles.heroTitle}>King's Path</h1>
+          <div style={styles.logoTitleRow}>
+            <img 
+              src="./assets/logo.png" 
+              alt="King's Path Logo" 
+              style={styles.heroLogo} 
+            />
+            <h1 style={{ ...styles.heroTitle, margin: 0 }}>King's Path</h1>
+          </div>
           <div style={styles.eloBadge}>🏆 Rating: {userElo} ELO</div>
           <p style={styles.heroSubtitle}>
             A premium, minimal, 100% offline-first chess platform for players of all levels. Zero network dependency, infinite tactical focus.
@@ -221,6 +228,21 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     gap: '12px'
+  },
+  logoTitleRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '16px',
+    marginBottom: '4px',
+    flexWrap: 'wrap'
+  },
+  heroLogo: {
+    width: '68px',
+    height: '68px',
+    borderRadius: '16px',
+    boxShadow: 'var(--shadow-md)',
+    border: '1.5px solid var(--border-color)'
   },
   eloBadge: {
     alignSelf: 'center',
