@@ -27,7 +27,7 @@
   --board-dark: #b58863;
   --board-highlight: rgba(255, 235, 59, 0.4);
   --board-select: rgba(139, 195, 74, 0.5);
-  --board-last-move: rgba(139, 195, 74, 0.3);
+  --board-last-move: rgba(247, 247, 105, 0.32);
   --board-king-check: rgba(244, 67, 54, 0.6);
   --board-hint-dot: rgba(0, 0, 0, 0.15);
 }

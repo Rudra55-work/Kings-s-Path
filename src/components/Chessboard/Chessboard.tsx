@@ -15,6 +15,7 @@ interface ChessboardProps {
   soundEnabled?: boolean;
   hapticsEnabled?: boolean;
   lastMove?: { from: string; to: string } | null;
+  premoveEnabled?: boolean;
 }
 
 export const Chessboard: React.FC<ChessboardProps> = ({
@@ -27,11 +28,13 @@ export const Chessboard: React.FC<ChessboardProps> = ({
   moveHintsEnabled = true,
   soundEnabled = true,
   hapticsEnabled = true,
-  lastMove = null
+  lastMove = null,
+  premoveEnabled = false
 }) => {
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
   const [validMoves, setValidMoves] = useState<string[]>([]); // destination square IDs
   const [promotionPending, setPromotionPending] = useState<{ from: string; to: string } | null>(null);
+  const [premove, setPremove] = useState<{ from: string; to: string } | null>(null);
 
   // Instantiated local chess engine just to fetch legal moves for highlighting
   const [localGame, setLocalGame] = useState<Chess>(new Chess(fen));
@@ -45,6 +48,36 @@ export const Chessboard: React.FC<ChessboardProps> = ({
     setSelectedSquare(null);
     setValidMoves([]);
     setPromotionPending(null);
+  }, [fen]);
+
+  // Trigger premove when turn becomes active
+  useEffect(() => {
+    if (interactive && premove) {
+      const currentChess = new Chess(fen);
+      const moves = currentChess.moves({ verbose: true }) as any[];
+      const matchedMove = moves.find(m => m.from === premove.from && m.to === premove.to);
+      
+      if (matchedMove) {
+        const isPawn = matchedMove.piece === 'p';
+        const isPromotionRank = premove.to.endsWith('8') || premove.to.endsWith('1');
+        const promo = (isPawn && isPromotionRank) ? 'q' : undefined;
+        
+        const timer = setTimeout(() => {
+          onMove(premove.from, premove.to, promo);
+        }, 80);
+        setPremove(null);
+        return () => clearTimeout(timer);
+      } else {
+        setPremove(null);
+      }
+    }
+  }, [fen, interactive, premove]);
+
+  // Reset premove on starting game
+  useEffect(() => {
+    if (fen === 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1') {
+      setPremove(null);
+    }
   }, [fen]);
 
   // Sync sound settings
@@ -65,8 +98,54 @@ export const Chessboard: React.FC<ChessboardProps> = ({
     return `${file}${rank}`;
   };
 
+  const getPseudoLegalMoves = (squareId: string): string[] => {
+    try {
+      const currentFen = localGame.fen();
+      const parts = currentFen.split(' ');
+      if (parts.length < 2) return [];
+      const currentTurn = parts[1];
+      const oppositeTurn = currentTurn === 'w' ? 'b' : 'w';
+      parts[1] = oppositeTurn;
+      const flippedFen = parts.join(' ');
+      const tempGame = new Chess(flippedFen);
+      const moves = tempGame.moves({ square: squareId as any, verbose: true }) as any[];
+      return moves.map(m => m.to);
+    } catch (e) {
+      console.error('Error getting pseudo-legal moves for premove:', e);
+      return [];
+    }
+  };
+
   const handleSquareClick = (squareId: string) => {
-    if (!interactive) return;
+    if (!interactive) {
+      if (!premoveEnabled) return;
+
+      const piece = localGame.get(squareId as any);
+      const userColor = localGame.turn() === 'w' ? 'b' : 'w';
+
+      // Case 1: Selecting own piece for premove
+      if (piece && piece.color === userColor) {
+        triggerHaptic();
+        setSelectedSquare(squareId);
+        const moves = getPseudoLegalMoves(squareId);
+        setValidMoves(moves);
+        return;
+      }
+
+      // Case 2: Attempting a premove
+      if (selectedSquare && validMoves.includes(squareId)) {
+        triggerHaptic();
+        setPremove({ from: selectedSquare, to: squareId });
+        setSelectedSquare(null);
+        setValidMoves([]);
+      } else {
+        // Clear selection and clear premove
+        setSelectedSquare(null);
+        setValidMoves([]);
+        setPremove(null);
+      }
+      return;
+    }
 
     const piece = localGame.get(squareId as any);
     const playerColor = localGame.turn();
@@ -116,7 +195,25 @@ export const Chessboard: React.FC<ChessboardProps> = ({
 
   // --- HTML5 Drag & Drop handlers ---
   const handleDragStart = (e: React.DragEvent, squareId: string) => {
-    if (!interactive) return;
+    if (!interactive) {
+      if (!premoveEnabled) {
+        e.preventDefault();
+        return;
+      }
+      const piece = localGame.get(squareId as any);
+      const userColor = localGame.turn() === 'w' ? 'b' : 'w';
+      if (!piece || piece.color !== userColor) {
+        e.preventDefault();
+        return;
+      }
+      
+      triggerHaptic();
+      setSelectedSquare(squareId);
+      const moves = getPseudoLegalMoves(squareId);
+      setValidMoves(moves);
+      e.dataTransfer.setData('text/plain', squareId);
+      return;
+    }
     const piece = localGame.get(squareId as any);
     if (!piece || piece.color !== localGame.turn()) {
       e.preventDefault();
@@ -137,6 +234,16 @@ export const Chessboard: React.FC<ChessboardProps> = ({
   const handleDrop = (e: React.DragEvent, targetSquareId: string) => {
     e.preventDefault();
     const sourceSquareId = e.dataTransfer.getData('text/plain');
+    if (!interactive) {
+      if (premoveEnabled && sourceSquareId && validMoves.includes(targetSquareId)) {
+        triggerHaptic();
+        setPremove({ from: sourceSquareId, to: targetSquareId });
+      }
+      setSelectedSquare(null);
+      setValidMoves([]);
+      return;
+    }
+
     if (sourceSquareId && validMoves.includes(targetSquareId)) {
       handleMoveAttempt(sourceSquareId, targetSquareId);
     } else {
@@ -163,6 +270,9 @@ export const Chessboard: React.FC<ChessboardProps> = ({
     // Check if square is part of last move
     const isLastMoveSq = lastMove && (lastMove.from === squareId || lastMove.to === squareId);
     
+    // Check if square is part of active premove
+    const isPremoveSq = premove && (premove.from === squareId || premove.to === squareId);
+    
     // Check if king in check
     const isKingInCheck = piece && piece.type === 'k' && piece.color === localGame.turn() && localGame.inCheck();
 
@@ -176,7 +286,8 @@ export const Chessboard: React.FC<ChessboardProps> = ({
       `theme-${boardTheme}`,
       isSelected ? 'selected' : '',
       isLastMoveSq ? 'last-move' : '',
-      isKingInCheck ? 'in-check' : ''
+      isKingInCheck ? 'in-check' : '',
+      isPremoveSq ? 'premove' : ''
     ].join(' ');
 
     return (
@@ -191,7 +302,10 @@ export const Chessboard: React.FC<ChessboardProps> = ({
         {piece && (
           <div
             className="piece-container"
-            draggable={interactive && piece.color === localGame.turn()}
+            draggable={
+              (interactive && piece.color === localGame.turn()) ||
+              (!interactive && premoveEnabled && piece.color === (localGame.turn() === 'w' ? 'b' : 'w'))
+            }
             onDragStart={(e) => handleDragStart(e, squareId)}
           >
             <SVGPiece

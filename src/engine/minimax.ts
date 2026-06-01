@@ -124,8 +124,7 @@ export async function getBestMove(
   });
 
   const isWhiteTurn = game.turn() === 'w';
-  let bestMove = moves[0];
-  let bestScore = isWhiteTurn ? -Infinity : Infinity;
+  const evaluatedMoves: Array<{ move: any; score: number }> = [];
 
   let movesEvaluated = 0;
   let lastYieldTime = Date.now();
@@ -141,17 +140,7 @@ export async function getBestMove(
     const score = minimax(game, depth - 1, -Infinity, Infinity, !isWhiteTurn);
     game.undo();
 
-    if (isWhiteTurn) {
-      if (score > bestScore) {
-        bestScore = score;
-        bestMove = move;
-      }
-    } else {
-      if (score < bestScore) {
-        bestScore = score;
-        bestMove = move;
-      }
-    }
+    evaluatedMoves.push({ move, score });
 
     movesEvaluated++;
     if (onProgress) {
@@ -159,14 +148,44 @@ export async function getBestMove(
     }
 
     // Yield control to the browser dynamically (only if calculations take more than 80ms)
-    // This removes heavy scheduling latency for fast calculations, yielding a 4x to 10x speedup!
     if (Date.now() - lastYieldTime > 80) {
       await new Promise((resolve) => setTimeout(resolve, 0));
       lastYieldTime = Date.now();
     }
   }
 
-  return { move: bestMove, score: bestScore };
+  // Fallback if no moves evaluated
+  if (evaluatedMoves.length === 0) {
+    return { move: moves[0], score: 0 };
+  }
+
+  // Find the absolute best score among completed evaluations
+  let bestScore = isWhiteTurn ? -Infinity : Infinity;
+  for (const item of evaluatedMoves) {
+    if (isWhiteTurn) {
+      if (item.score > bestScore) bestScore = item.score;
+    } else {
+      if (item.score < bestScore) bestScore = item.score;
+    }
+  }
+
+  // OPTIMIZATION (Prevent repetitive shuffles):
+  // We collect all moves within a tiny tolerance threshold (15 centipawns / 0.15 points) of the best score,
+  // and choose one at random! This keeps the AI play dynamic and unpredictable while remaining optimal!
+  const scoreTolerance = 15;
+  const bestCandidates = evaluatedMoves.filter(item => {
+    if (isWhiteTurn) {
+      return item.score >= bestScore - scoreTolerance;
+    } else {
+      return item.score <= bestScore + scoreTolerance;
+    }
+  }).map(item => item.move);
+
+  const selectedMove = bestCandidates.length > 0
+    ? bestCandidates[Math.floor(Math.random() * bestCandidates.length)]
+    : evaluatedMoves[0].move;
+
+  return { move: selectedMove, score: bestScore };
 }
 
 /**

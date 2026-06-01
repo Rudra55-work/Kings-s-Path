@@ -307,6 +307,7 @@ export const PlayGame: React.FC<PlayGameProps> = ({ settings, onNavigate }) => {
 
   const requestEngineHint = async () => {
     if (isEngineCalculating || isGameOver) return;
+    if (settings.soundEnabled) soundSynth.playHint();
     setIsEngineCalculating(true);
     const { move } = await getBestMove(game.fen(), 3); // Level 3 quick evaluation
     if (move) {
@@ -317,6 +318,7 @@ export const PlayGame: React.FC<PlayGameProps> = ({ settings, onNavigate }) => {
 
   const handleUndo = () => {
     if (isEngineCalculating || isGameOver) return;
+    if (settings.soundEnabled) soundSynth.playUndo();
     
     // In engine mode, undo BOTH player's move and engine's response
     if (gameMode === 'engine') {
@@ -347,6 +349,7 @@ export const PlayGame: React.FC<PlayGameProps> = ({ settings, onNavigate }) => {
   };
 
   const handleStartGame = () => {
+    if (settings.soundEnabled) soundSynth.playNewGame();
     const cleanGame = new Chess();
     
     // Choose actual playing color dynamically
@@ -393,6 +396,7 @@ export const PlayGame: React.FC<PlayGameProps> = ({ settings, onNavigate }) => {
   };
 
   const handleRestart = () => {
+    if (settings.soundEnabled) soundSynth.playRestart();
     const cleanGame = new Chess();
     setGame(cleanGame);
     setFen(cleanGame.fen());
@@ -682,6 +686,7 @@ export const PlayGame: React.FC<PlayGameProps> = ({ settings, onNavigate }) => {
                 soundEnabled={settings.soundEnabled}
                 hapticsEnabled={settings.hapticsEnabled}
                 lastMove={engineHint || lastMove}
+                premoveEnabled={gameMode === 'engine' && !isGameOver && isLive}
               />
             </GameClock>
           ) : (
@@ -696,6 +701,7 @@ export const PlayGame: React.FC<PlayGameProps> = ({ settings, onNavigate }) => {
               soundEnabled={settings.soundEnabled}
               hapticsEnabled={settings.hapticsEnabled}
               lastMove={engineHint || lastMove}
+              premoveEnabled={gameMode === 'engine' && !isGameOver && isLive}
             />
           )}
 
@@ -704,7 +710,10 @@ export const PlayGame: React.FC<PlayGameProps> = ({ settings, onNavigate }) => {
             <button 
               className="btn btn-secondary" 
               style={styles.controlBtn}
-              onClick={() => setBoardFlipped(prev => !prev)}
+              onClick={() => {
+                setBoardFlipped(prev => !prev);
+                if (settings.soundEnabled) soundSynth.playFlip();
+              }}
               title="Flip Board View"
             >
               🔄 Flip
@@ -730,7 +739,10 @@ export const PlayGame: React.FC<PlayGameProps> = ({ settings, onNavigate }) => {
             <button 
               className="btn btn-secondary" 
               style={styles.controlBtn}
-              onClick={() => setIsPgnModalOpen(true)}
+              onClick={() => {
+                setIsPgnModalOpen(true);
+                if (settings.soundEnabled) soundSynth.playPgn();
+              }}
               title="Import or Export PGN match records"
             >
               💾 PGN

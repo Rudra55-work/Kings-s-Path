@@ -54,6 +54,23 @@ function App() {
     };
   }, []);
 
+  // Synchronize browser history and physical android back buttons
+  useEffect(() => {
+    // Initialize history state on mount
+    window.history.replaceState({ view: 'home' }, '', '');
+    
+    const handlePopState = (e: PopStateEvent) => {
+      if (e.state && e.state.view) {
+        setCurrentView(e.state.view);
+      } else {
+        setCurrentView('home');
+      }
+    };
+    
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   const handleUpdateSettings = (updated: Partial<AppSettings>) => {
     setSettings(prev => ({ ...prev, ...updated }));
   };
@@ -63,6 +80,10 @@ function App() {
       setPgnToLoad(null);
     }
     setCurrentView(view);
+    // Push new view to history state if it is different
+    if (window.history.state?.view !== view) {
+      window.history.pushState({ view }, '', '');
+    }
   };
 
   const handleLoadPgnAndPlay = (pgn: string) => {
