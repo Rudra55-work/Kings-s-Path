@@ -201,8 +201,8 @@ export const PlayGame: React.FC<PlayGameProps> = ({ settings, onNavigate }) => {
       1: 1,
       2: 2,
       3: 3,
-      4: 3,
-      5: 4
+      4: 4,
+      5: 5
     };
     const targetDepth = levelDepths[difficulty] || 3;
 

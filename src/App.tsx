@@ -142,10 +142,21 @@ function App() {
       {/* Sleek App Header Bar */}
       <header className="app-header">
         <div className="container header-container">
-          <a href="#" className="app-logo" onClick={() => navigateToView('home')}>
-            <span className="logo-icon"></span>
-            King's Path
-          </a>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {currentView !== 'home' && (
+              <button 
+                className="back-header-btn" 
+                onClick={() => window.history.back()}
+                title="Go Back"
+              >
+                ← Back
+              </button>
+            )}
+            <a href="#" className="app-logo" onClick={() => navigateToView('home')}>
+              <span className="logo-icon"></span>
+              King's Path
+            </a>
+          </div>
 
           {/* Desktop and Tablet Navbar links */}
           {renderNavLinks('desktop-nav')}

@@ -178,6 +178,52 @@ export function evaluateBoard(board: any[][]): number {
   const isEndgame = checkIfEndgame(board);
   let score = 0;
 
+  let wBishops = 0;
+  let bBishops = 0;
+
+  // Track pawn column counts to analyze open files & isolated/doubled pawns
+  const wPawnFileCounts = new Array(8).fill(0);
+  const bPawnFileCounts = new Array(8).fill(0);
+
+  // First pass: collect piece locations and counts
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const piece = board[r][c];
+      if (!piece) continue;
+      if (piece.type === 'p') {
+        if (piece.color === 'w') {
+          wPawnFileCounts[c]++;
+        } else {
+          bPawnFileCounts[c]++;
+        }
+      } else if (piece.type === 'b') {
+        if (piece.color === 'w') wBishops++;
+        else bBishops++;
+      }
+    }
+  }
+
+  // Bishop pair bonus
+  if (wBishops >= 2) score += 30;
+  if (bBishops >= 2) score -= 30;
+
+  // Double and isolated pawns penalization
+  for (let c = 0; c < 8; c++) {
+    // Doubled pawns
+    if (wPawnFileCounts[c] > 1) score -= 15 * (wPawnFileCounts[c] - 1);
+    if (bPawnFileCounts[c] > 1) score += 15 * (bPawnFileCounts[c] - 1);
+
+    // Isolated pawns: no pawns on adjacent files
+    const leftCol = c - 1;
+    const rightCol = c + 1;
+    const hasAdjWhitePawn = (leftCol >= 0 && wPawnFileCounts[leftCol] > 0) || (rightCol < 8 && wPawnFileCounts[rightCol] > 0);
+    const hasAdjBlackPawn = (leftCol >= 0 && bPawnFileCounts[leftCol] > 0) || (rightCol < 8 && bPawnFileCounts[rightCol] > 0);
+
+    if (wPawnFileCounts[c] > 0 && !hasAdjWhitePawn) score -= 12;
+    if (bPawnFileCounts[c] > 0 && !hasAdjBlackPawn) score += 12;
+  }
+
+  // Second pass: full valuation (material + position + rooks)
   for (let r = 0; r < 8; r++) {
     for (let c = 0; c < 8; c++) {
       const piece = board[r][c];
@@ -186,7 +232,22 @@ export function evaluateBoard(board: any[][]): number {
       const pType = piece.type;
       const pColor = piece.color;
       const baseValue = PIECE_VALUES[pType] || 0;
-      const positionalValue = getPositionalValue(pType, pColor, r, c, isEndgame);
+      let positionalValue = getPositionalValue(pType, pColor, r, c, isEndgame);
+
+      // Rook on open or semi-open file
+      if (pType === 'r') {
+        const isWhite = pColor === 'w';
+        const ownPawnCount = isWhite ? wPawnFileCounts[c] : bPawnFileCounts[c];
+        const oppPawnCount = isWhite ? bPawnFileCounts[c] : wPawnFileCounts[c];
+
+        if (ownPawnCount === 0) {
+          if (oppPawnCount === 0) {
+            positionalValue += 15; // Fully open file
+          } else {
+            positionalValue += 10; // Semi-open file
+          }
+        }
+      }
 
       const totalVal = baseValue + positionalValue;
 

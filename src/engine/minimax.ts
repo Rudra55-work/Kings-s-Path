@@ -3,7 +3,7 @@ import { evaluateBoard, PIECE_VALUES } from './evaluation';
 
 // Globals to enforce search time limit to completely eliminate UI lag
 let searchStartTime = 0;
-const SEARCH_TIME_LIMIT = 500; // Strict 500ms time limit budget for search calculations
+const SEARCH_TIME_LIMIT = 1500; // Strict 1500ms time limit budget for search calculations
 
 /**
  * Minimax algorithm with Alpha-Beta pruning to evaluate the best position score.
